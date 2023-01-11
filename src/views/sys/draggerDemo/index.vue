@@ -1,98 +1,192 @@
 <template>
-  <PageWrapper title="关于">
-    <template #headerContent>
-      <div class="flex justify-between items-center">
-        <span class="flex-1">
-          <a :href="GITHUB_URL" target="_blank">{{ name }}</a>
-          是一个基于Vue3.0、Vite、 Ant-Design-Vue 、TypeScript
-          的后台解决方案，目标是为中大型项目开发,提供现成的开箱解决方案及丰富的示例,原则上不会限制任何代码用于商用。
-        </span>
+  <div class="seat-box">
+    <div v-for="(item, index) in obj.seatArr" :key="index">
+      <div class="seat-row-box">
+        <div class="fl seat-row-title">{{ item.rowHint }}排</div>
+
+        <draggable
+          group="people"
+          :list="item?.seat"
+          class="draggable-item seat-row-arr"
+          item-key="seatId"
+          tag="div"
+          @change="onStart"
+          @end="end"
+          :data-index="index"
+          data-seatid="seatId"
+        >
+          <template #item="{ element }">
+            <div class="seat-row-arr-item" :data-seatid="element.seatNum" :data-index="index">
+              <div
+                class="seat-name"
+                :style="[
+                  {
+                    background:
+                      element?.seatType == 'MT_SEAT_TYPE_DISABLE'
+                        ? '#555555'
+                        : element?.seatType == 'MT_SEAT_TYPE_RESERVED'
+                        ? '#0000bf'
+                        : element?.seatColor,
+                  },
+                  {
+                    border: showBorder ? '1px solid #333333' : 'none',
+                  },
+                ]"
+              >
+                <div v-if="element?.realName" class="seat-name-con">
+                  {{ element?.realName }}
+                </div>
+              </div>
+              <div class="seat-item">
+                <span v-if="showRowNum"> {{ element?.seatNum }}</span>
+              </div>
+            </div>
+          </template>
+        </draggable>
       </div>
-    </template>
-    <Description @register="infoRegister" class="enter-y" />
-    <Description @register="register" class="my-4 enter-y" />
-    <Description @register="registerDev" class="enter-y" />
-  </PageWrapper>
+      <div
+        v-if="item.row == 2 && obj.venuetitle?.type == 'MT_VENUE_TYPE_CHAIRMAN'"
+        class="massageTitle"
+      >
+        请前两排的领导统一从会场右侧进入，三至八排从两侧进入。
+      </div>
+    </div>
+  </div>
 </template>
 <script lang="ts" setup>
-  import { h } from 'vue';
-  import { Tag } from 'ant-design-vue';
-  import { PageWrapper } from '/@/components/Page';
-  import { Description, DescItem, useDescription } from '/@/components/Description/index';
-  import { GITHUB_URL, SITE_URL, DOC_URL } from '/@/settings/siteSetting';
-
-  const { pkg, lastBuildTime } = __APP_INFO__;
-
-  const { dependencies, devDependencies, name, version } = pkg;
-
-  const schema: DescItem[] = [];
-  const devSchema: DescItem[] = [];
-
-  const commonTagRender = (color: string) => (curVal) => h(Tag, { color }, () => curVal);
-  const commonLinkRender = (text: string) => (href) => h('a', { href, target: '_blank' }, text);
-
-  const infoSchema: DescItem[] = [
-    {
-      label: '版本',
-      field: 'version',
-      render: commonTagRender('blue'),
-    },
-    {
-      label: '最后编译时间',
-      field: 'lastBuildTime',
-      render: commonTagRender('blue'),
-    },
-    {
-      label: '文档地址',
-      field: 'doc',
-      render: commonLinkRender('文档地址'),
-    },
-    {
-      label: '预览地址',
-      field: 'preview',
-      render: commonLinkRender('预览地址'),
-    },
-    {
-      label: 'Github',
-      field: 'github',
-      render: commonLinkRender('Github'),
-    },
-  ];
-
-  const infoData = {
-    version,
-    lastBuildTime,
-    doc: DOC_URL,
-    preview: SITE_URL,
-    github: GITHUB_URL,
+  import { reactive, onMounted, ref } from 'vue';
+  import { defHttp } from '/@/utils/http/axios';
+  import draggable from 'vuedraggable';
+  import { DataModel } from './model/index';
+  let obj = reactive<any>({ seatArr: [], venuetitle: {} });
+  let copyobj = { seatArr: [], venuetitle: {} };
+  let showBorder = ref(true); //座位边框
+  let showRowNum = ref(true); //是否显示座位号
+  /* ======== 获取数据 ======== */
+  const getData = async () => {
+    const data = await defHttp.post<DataModel>({ url: '/draggger' });
+    obj.seatArr = data.data;
+    copyobj.seatArr = data.data;
+    obj.venuetitle = data.venue;
   };
-
-  Object.keys(dependencies).forEach((key) => {
-    schema.push({ field: key, label: key });
-  });
-
-  Object.keys(devDependencies).forEach((key) => {
-    devSchema.push({ field: key, label: key });
-  });
-
-  const [register] = useDescription({
-    title: '生产环境依赖',
-    data: dependencies,
-    schema: schema,
-    column: 3,
-  });
-
-  const [registerDev] = useDescription({
-    title: '开发环境依赖',
-    data: devDependencies,
-    schema: devSchema,
-    column: 3,
-  });
-
-  const [infoRegister] = useDescription({
-    title: '项目信息',
-    data: infoData,
-    schema: infoSchema,
-    column: 2,
+  /* ======== 拖拽开始 ======== */
+  const onStart = async (val, val2) => {
+    // console.log('%c val,val2', 'font-size:13px; background:pink; color:#bf2c9f;', val, val2);
+  };
+  const end = async (val) => {
+    console.log('%cend val,val2', 'font-size:13px; background:pink; color:#bf2c9f;', val);
+    // console.log(
+    //   '%c copyList.value[val.item.dataset.index].seat[val.newIndex]',
+    //   'font-size:13px; background:pink; color:#bf2c9f;',
+    //   copyList.value[val.item.dataset.index].seat[val.newIndex].seatId,
+    //   copyList.value[val.item.dataset.index].seat[val.oldIndex].seatId,
+    // );
+    let copyList = copyobj.seatArr;
+    console.log('%c copyList', 'font-size:13px; background:pink; color:#bf2c9f;', copyList);
+    const item = copyList[val.item.dataset.index].seat[val.oldIndex];
+    console.log('%c item', 'font-size:13px; background:pink; color:#bf2c9f;', item);
+    copyList[val.item.dataset.index].seat.splice(
+      val.oldIndex,
+      1,
+      copyList[val.item.dataset.index].seat[val.newIndex],
+    );
+    copyList[val.item.dataset.index].seat.splice(val.newIndex, 1, item);
+    obj.seatArr = copyList;
+    copyList[val.item.dataset.index].seat = obj.seatArr[val.item.dataset.index].seat.slice(0);
+  };
+  onMounted(() => {
+    getData();
   });
 </script>
+<style lang="less" scoped>
+  .seat-box {
+    width: 100%;
+  }
+
+  .seat-row-box {
+    display: flex;
+    flex-wrap: nowrap;
+
+    .seat-row-title {
+      line-height: 70px;
+      margin-right: 20px;
+      white-space: nowrap;
+      width: 60px;
+    }
+
+    .seat-row-arr {
+      margin-right: 40px;
+      display: flex;
+
+      &.seat-row-arr-right {
+        justify-content: flex-end;
+      }
+
+      &.seat-row-arr-center {
+        justify-content: center;
+        margin-left: auto;
+      }
+
+      &:last-child {
+        margin-right: 0;
+        margin: auto;
+      }
+    }
+
+    .seat-row-arr-item {
+      margin-right: 3px;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+
+    .draggable-item {
+      // width: 25px;
+      // height: 70px;
+      // overflow-y: hidden;
+    }
+
+    .seat-name {
+      width: 25px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d7d7d7;
+      writing-mode: tb-rl;
+      border: 1px solid #333333;
+
+      cursor: pointer;
+
+      .seat-name-con {
+        width: 25px;
+        height: 70px;
+        // display: flex;
+        // align-items: center;
+        // justify-content: center;
+        padding: 5px 0;
+        writing-mode: vertical-rl;
+        cursor: pointer;
+        user-select: none;
+        text-align-last: justify;
+        display: table-cell;
+        vertical-align: middle;
+        text-align: center;
+      }
+    }
+
+    .seat-item {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+    }
+  }
+
+  .massageTitle {
+    text-align: center;
+    padding: 10px 0 10px 55px;
+    font-weight: bold;
+  }
+</style>
